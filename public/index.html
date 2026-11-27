@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StreamSearch — TMDB Player</title>
+  <title>CineDL — Movie & TV Download Finder</title>
   <style>
     :root {
       color-scheme: dark;
@@ -16,6 +16,7 @@
       --text: #eef2f6;
       --muted: #94a3b8;
       --gold: #f59e0b;
+      --header-crop: 68px; /* Height of the sticky header cropped from the top of the iframe */
     }
     * { box-sizing: border-box; }
     body {
@@ -300,17 +301,17 @@
     }
     .load-more-btn:hover { border-color: var(--accent); }
 
-    /* Player Modal */
+    /* Download Modal */
     .modal {
       position: fixed;
       inset: 0;
       z-index: 100;
-      background: rgba(5, 7, 11, 0.9);
+      background: rgba(5, 7, 11, 0.92);
       backdrop-filter: blur(8px);
       display: none;
       align-items: center;
       justify-content: center;
-      padding: 0.75rem;
+      padding: 0.65rem;
     }
     .modal.open { display: flex; }
     .modal-card {
@@ -318,7 +319,7 @@
       border: 1px solid var(--border);
       border-radius: 16px;
       width: 100%;
-      max-width: 1000px;
+      max-width: 860px;
       max-height: 94vh;
       overflow-y: auto;
       display: flex;
@@ -332,28 +333,50 @@
       border-bottom: 1px solid var(--border);
       gap: 0.75rem;
     }
-    .modal-title { font-weight: 700; font-size: 1.02rem; }
-    .player-shell {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      background: #000;
-    }
-    .player-shell iframe {
-      width: 100%;
-      height: 100%;
-      border: 0;
-      display: block;
-    }
-    .modal-controls {
+    .modal-title { font-weight: 700; font-size: 1.05rem; }
+
+    /* Compact Meta Bar */
+    .modal-details {
       padding: 0.85rem 1rem;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.5;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-details a { color: #60a5fa; text-decoration: none; font-weight: 600; }
+    .modal-details a:hover { text-decoration: underline; }
+    .meta-tags {
+      display: flex;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.5rem;
+      color: var(--text);
+      font-size: 0.78rem;
+    }
+    .meta-tag {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+    }
+    .overview-text {
+      margin: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* Episode & Download Controls */
+    .modal-controls {
+      padding: 0.75rem 1rem;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.7rem;
       border-bottom: 1px solid var(--border);
       background: var(--surface-2);
-      font-size: 0.85rem;
+      font-size: 0.84rem;
     }
     .modal-controls label {
       display: inline-flex;
@@ -368,27 +391,31 @@
       font-weight: 600;
     }
     .direct-link:hover { text-decoration: underline; }
-    .modal-details {
-      padding: 1rem;
+
+    /* Tall Cropped Download Panel (Hides Sticky Top Navbar) */
+    .download-shell {
+      position: relative;
+      width: 100%;
+      height: 56vh;
+      min-height: 420px;
+      max-height: 620px;
+      background: #0a0a0a;
+      overflow: hidden;
+    }
+    .download-shell iframe {
+      position: relative;
+      top: calc(var(--header-crop) * -1);
+      width: 100%;
+      height: calc(100% + var(--header-crop));
+      border: 0;
+      display: block;
+    }
+    .modal-footer-note {
+      padding: 0.6rem 1rem;
+      font-size: 0.78rem;
       color: var(--muted);
-      font-size: 0.9rem;
-      line-height: 1.55;
-    }
-    .modal-details a { color: #60a5fa; text-decoration: none; font-weight: 600; }
-    .modal-details a:hover { text-decoration: underline; }
-    .meta-tags {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      margin-bottom: 0.65rem;
-      color: var(--text);
-      font-size: 0.8rem;
-    }
-    .meta-tag {
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      padding: 0.2rem 0.55rem;
-      border-radius: 6px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
     }
   </style>
 </head>
@@ -396,7 +423,7 @@
   <header>
     <div class="header-inner">
       <div class="brand-row">
-        <div class="brand" id="home-btn">Stream<span>Search</span></div>
+        <div class="brand" id="home-btn">Cine<span>DL</span></div>
         <select id="sort-select" title="Sort results">
           <option value="default">Sort: Relevance</option>
           <option value="rating">Sort: Highest Rated</option>
@@ -441,15 +468,15 @@
     </div>
   </main>
 
-  <!-- Player Modal -->
-  <div class="modal" id="player-modal">
+  <!-- Download Links Modal -->
+  <div class="modal" id="download-modal">
     <div class="modal-card">
       <div class="modal-header">
         <div class="modal-title" id="modal-title">Loading...</div>
         <button class="icon-btn" id="close-modal" title="Close (Esc)">✕</button>
       </div>
 
-      <div class="player-shell" id="player-shell"></div>
+      <div class="modal-details" id="modal-details"></div>
 
       <div class="modal-controls">
         <label id="tv-season-wrap" style="display:none;">
@@ -464,34 +491,37 @@
           Episode:
           <input id="anime-ep-input" type="number" min="1" value="1" style="width:72px; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:0.3rem 0.5rem;" />
         </label>
-        <label title="Blocks popups and top-level redirects inside the iframe">
+        <label title="Blocks ad popups while allowing file downloads">
           <input type="checkbox" id="sandbox-toggle" checked />
-          Strict Popup Sandbox
+          Block Popups
         </label>
         <a id="open-direct-tab" class="direct-link" href="#" target="_blank" rel="noopener noreferrer">
-          Open on StreamRip ↗
+          Open External ↗
         </a>
       </div>
 
-      <div class="modal-details" id="modal-details"></div>
+      <div class="download-shell" id="download-shell"></div>
+
+      <div class="modal-footer-note">
+        Scroll inside the box below to choose a quality (1080p / 720p / 480p). If a download host opens in a new tab, uncheck <strong>Block Popups</strong> or use <strong>Open External ↗</strong>.
+      </div>
     </div>
   </div>
 
   <script>
-    const STREAM_ORIGIN = "https://streamrip.fun";
+    const SOURCE_ORIGIN = "https://streamrip.fun";
     const IMG_BASE = "https://image.tmdb.org/t/p/w342";
     const IMG_THUMB = "https://image.tmdb.org/t/p/w92";
     const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='100%25' height='100%25' fill='%23141923'/%3E%3Ctext x='50%25' y='50%25' fill='%2364748b' font-family='sans-serif' font-size='18' text-anchor='middle'%3ENo Poster%3C/text%3E%3C/svg%3E";
 
-    // Matches streamrip.fun/#templates exactly
-    const buildStreamUrl = ({ type, id, season = 1, episode = 1 }) => {
+    const buildDownloadPageUrl = ({ type, id, season = 1, episode = 1 }) => {
       if (type === "tv") {
-        return `${STREAM_ORIGIN}/tv/${id}/${season}/${episode}`;
+        return `${SOURCE_ORIGIN}/tv/${id}/${season}/${episode}`;
       }
       if (type === "anime") {
-        return `${STREAM_ORIGIN}/anime/${id}/${episode}`;
+        return `${SOURCE_ORIGIN}/anime/${id}/${episode}`;
       }
-      return `${STREAM_ORIGIN}/movie/${id}`;
+      return `${SOURCE_ORIGIN}/movie/${id}`;
     };
 
     const state = {
@@ -520,10 +550,10 @@
       sectionTitle: document.getElementById("section-title"),
       grid: document.getElementById("grid"),
       loadMore: document.getElementById("load-more"),
-      modal: document.getElementById("player-modal"),
+      modal: document.getElementById("download-modal"),
       closeModal: document.getElementById("close-modal"),
       modalTitle: document.getElementById("modal-title"),
-      playerShell: document.getElementById("player-shell"),
+      downloadShell: document.getElementById("download-shell"),
       tvSeasonWrap: document.getElementById("tv-season-wrap"),
       tvEpisodeWrap: document.getElementById("tv-episode-wrap"),
       seasonSelect: document.getElementById("season-select"),
@@ -609,7 +639,7 @@
             <div class="card-title">${escapeHtml(item.title)}</div>
             <div class="card-sub">
               <span>${item.year}</span>
-              <span>TMDB #${item.id}</span>
+              <span>ID #${item.id}</span>
             </div>
           </div>
         </article>
@@ -677,9 +707,9 @@
           if (/^\d+$/.test(q)) {
             const num = Number(q);
             directItems.push(
-              { id: num, type: "movie", title: `Open Movie (TMDB #${num})`, year: "Direct ID", thumb: PLACEHOLDER, rating: 0 },
-              { id: num, type: "tv", title: `Open TV Show (TMDB #${num})`, year: "Direct ID", thumb: PLACEHOLDER, rating: 0 },
-              { id: num, type: "anime", title: `Open Anime (AniList #${num})`, year: "Direct ID", thumb: PLACEHOLDER, rating: 0 }
+              { id: num, type: "movie", title: `Movie Downloads (TMDB #${num})`, year: "Direct ID", thumb: PLACEHOLDER, rating: 0 },
+              { id: num, type: "tv", title: `TV Downloads (TMDB #${num})`, year: "Direct ID", thumb: PLACEHOLDER, rating: 0 },
+              { id: num, type: "anime", title: `Anime Downloads (AniList #${num})`, year: "Direct ID", thumb: PLACEHOLDER, rating: 0 }
             );
           }
 
@@ -727,7 +757,7 @@
         e.preventDefault();
         els.input.focus();
       } else if (e.key === "Escape") {
-        if (els.modal.classList.contains("open")) closePlayer();
+        if (els.modal.classList.contains("open")) closeModal();
         else closeSuggestions();
       }
     });
@@ -746,7 +776,7 @@
         e.preventDefault();
         const picked = state.suggItems[state.suggIndex];
         closeSuggestions();
-        openPlayer(picked.id, picked.type);
+        openDownloadModal(picked.id, picked.type);
       }
     });
 
@@ -755,7 +785,7 @@
       if (!row) return;
       const picked = state.suggItems[Number(row.dataset.idx)];
       closeSuggestions();
-      if (picked) openPlayer(picked.id, picked.type);
+      if (picked) openDownloadModal(picked.id, picked.type);
     });
 
     document.addEventListener("click", (e) => {
@@ -817,11 +847,11 @@
     els.grid.addEventListener("click", (e) => {
       const card = e.target.closest(".card");
       if (!card) return;
-      openPlayer(Number(card.dataset.id), card.dataset.type);
+      openDownloadModal(Number(card.dataset.id), card.dataset.type);
     });
 
-    // Player Modal
-    async function openPlayer(id, type) {
+    // Download Modal Logic
+    async function openDownloadModal(id, type) {
       state.activeMedia = { id, type, season: 1, episode: 1 };
       els.modal.classList.add("open");
       els.modalTitle.textContent = `Loading #${id}...`;
@@ -831,11 +861,11 @@
       els.animeEpWrap.style.display = type === "anime" ? "inline-flex" : "none";
       els.animeEpInput.value = 1;
 
-      renderIframe();
+      renderDownloadFrame();
 
       if (type === "anime") {
-        els.modalTitle.textContent = `Anime (AniList #${id})`;
-        els.modalDetails.innerHTML = `<p>Playing via <code>/anime/${id}/1</code>.</p>`;
+        els.modalTitle.textContent = `Anime Downloads (AniList #${id})`;
+        els.modalDetails.innerHTML = `<p class="overview-text">Direct download links for Episode 1.</p>`;
         return;
       }
 
@@ -851,12 +881,12 @@
         els.modalDetails.innerHTML = `
           <div class="meta-tags">
             <span class="meta-tag">${type.toUpperCase()}</span>
-            <span class="meta-tag">TMDB ID: ${id}</span>
+            <span class="meta-tag">TMDB #${id}</span>
             ${details.vote_average ? `<span class="meta-tag">★ ${details.vote_average.toFixed(1)}</span>` : ""}
             ${details.runtime ? `<span class="meta-tag">${details.runtime} min</span>` : ""}
-            ${trailer ? `<a class="meta-tag" href="https://www.youtube.com/watch?v=${encodeURIComponent(trailer.key)}" target="_blank" rel="noopener noreferrer">Watch Trailer ↗</a>` : ""}
+            ${trailer ? `<a class="meta-tag" href="https://www.youtube.com/watch?v=${encodeURIComponent(trailer.key)}" target="_blank" rel="noopener noreferrer">Trailer ↗</a>` : ""}
           </div>
-          <p>${escapeHtml(details.overview || "No overview available.")}</p>
+          <p class="overview-text">${escapeHtml(details.overview || "No overview available.")}</p>
         `;
 
         if (type === "tv" && Array.isArray(details.seasons)) {
@@ -887,32 +917,30 @@
       } catch {
         els.episodeSelect.innerHTML = `<option value="1">Episode 1</option>`;
       }
-      renderIframe();
+      renderDownloadFrame();
     }
 
-    function renderIframe() {
+    function renderDownloadFrame() {
       if (!state.activeMedia) return;
-      const src = buildStreamUrl(state.activeMedia);
+      const src = buildDownloadPageUrl(state.activeMedia);
       els.openDirectTab.href = src;
 
       const iframe = document.createElement("iframe");
       iframe.src = src;
-      iframe.allowFullscreen = true;
       iframe.referrerPolicy = "no-referrer";
-      iframe.allow = "autoplay; fullscreen; encrypted-media; picture-in-picture";
 
       if (els.sandboxToggle.checked) {
-        // Allows player scripts/playback while blocking popups and top-level redirects
-        iframe.sandbox = "allow-scripts allow-same-origin allow-forms allow-presentation";
+        // Allows downloads and page scripts while blocking ad popups and top-window redirects
+        iframe.sandbox = "allow-scripts allow-same-origin allow-forms allow-downloads";
       }
 
-      els.playerShell.innerHTML = "";
-      els.playerShell.appendChild(iframe);
+      els.downloadShell.innerHTML = "";
+      els.downloadShell.appendChild(iframe);
     }
 
-    function closePlayer() {
+    function closeModal() {
       els.modal.classList.remove("open");
-      els.playerShell.innerHTML = "";
+      els.downloadShell.innerHTML = "";
       state.activeMedia = null;
     }
 
@@ -922,17 +950,17 @@
     els.episodeSelect.addEventListener("change", () => {
       if (!state.activeMedia) return;
       state.activeMedia.episode = Number(els.episodeSelect.value);
-      renderIframe();
+      renderDownloadFrame();
     });
     els.animeEpInput.addEventListener("change", () => {
       if (!state.activeMedia) return;
       state.activeMedia.episode = Math.max(1, Number(els.animeEpInput.value) || 1);
-      renderIframe();
+      renderDownloadFrame();
     });
-    els.sandboxToggle.addEventListener("change", renderIframe);
-    els.closeModal.addEventListener("click", closePlayer);
+    els.sandboxToggle.addEventListener("change", renderDownloadFrame);
+    els.closeModal.addEventListener("click", closeModal);
     els.modal.addEventListener("click", (e) => {
-      if (e.target === els.modal) closePlayer();
+      if (e.target === els.modal) closeModal();
     });
 
     // Init
