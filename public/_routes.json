@@ -1,5 +1,6 @@
+
 {
   "version": 1,
-  "include": ["/api/*", "/proxy/*"],
+  "include": ["/api/*"],
   "exclude": ["/index.html", "/favicon.ico"]
 }
