@@ -11,10 +11,17 @@ export async function onRequestGet(context) {
   let tmdbUrl = "";
 
   if (action === "trending") {
-    const media = ["all", "movie", "tv"].includes(url.searchParams.get("type"))
-      ? url.searchParams.get("type")
-      : "all";
-    tmdbUrl = `${baseUrl}/trending/${media}/week?api_key=${encodeURIComponent(apiKey)}&language=en-US&page=${page}`; } else if (action === "search") { const query = (url.searchParams.get("query") \vert{}\vert{} "").trim(); if (!query) { return Response.json({ results: [], total_pages: 0, total_results: 0 }); } const filterType = url.searchParams.get("type") \vert{}\vert{} "multi"; const endpoint = ["movie", "tv", "multi"].includes(filterType) ? filterType : "multi"; tmdbUrl = `${baseUrl}/search/${endpoint}?api_key=${encodeURIComponent(apiKey)}&query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=${page}`;
+    const rawType = url.searchParams.get("type");
+    const media = ["all", "movie", "tv"].includes(rawType) ? rawType : "all";
+    tmdbUrl = `${baseUrl}/trending/${media}/week?api_key=${encodeURIComponent(apiKey)}&language=en-US&page=${page}`;
+  } else if (action === "search") {
+    const query = (url.searchParams.get("query") || "").trim();
+    if (!query) {
+      return Response.json({ results: [], total_pages: 0, total_results: 0 });
+    }
+    const filterType = url.searchParams.get("type") || "multi";
+    const endpoint = ["movie", "tv", "multi"].includes(filterType) ? filterType : "multi";
+    tmdbUrl = `${baseUrl}/search/${endpoint}?api_key=${encodeURIComponent(apiKey)}&query=${encodeURIComponent(query)}&include_adult=false&language=en-US&page=${page}`;
   } else if (action === "details") {
     const id = url.searchParams.get("id") || "";
     const type = url.searchParams.get("type") || "movie";
